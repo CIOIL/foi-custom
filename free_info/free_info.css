@@ -1,0 +1,10 @@
+.node-type-items #block-views-most-viewed-block, 
+.node-type-items #block-views-most-popular-block,
+#block-views-wizard-global-view-block{
+	display: none;
+}
+.page-node-add-items  #block-views-most-viewed-block, 
+.page-node-add-items  #block-views-most-popular-block,
+#block-views-wizard-global-view-block{
+	display: none;
+}

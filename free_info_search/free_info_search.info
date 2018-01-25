@@ -1,0 +1,4 @@
+name = Free info search module
+description = apache search hooks
+core = 7.x
+package = "Free Info"

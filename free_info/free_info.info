@@ -1,0 +1,4 @@
+name = Free info module
+description = free_info hooks
+core = 7.x
+package = "Free Info"

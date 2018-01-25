@@ -1,0 +1,391 @@
+<?php
+function free_info_init() {
+  $path = drupal_get_path('module', 'free_info');
+  if (path_is_admin(current_path())) {  
+    drupal_add_css($path . '/free_info.css');
+    drupal_add_js($path . '/free_info.js');
+  }
+}
+
+function free_info_install(){
+  variable_set('menu_icons_absolute_links', FALSE);
+}
+
+function free_info_menu(){
+	$items['free_info/ajax'] = array(
+		'title' => t('free_info AJAX'),
+    	'type' => MENU_CALLBACK,
+    	'page callback' => 'free_info_ajax',
+    	'access arguments' => array('access content'),);
+
+  $items['free_info/ajax_offices'] = array(    
+    'title' => t('free_info AJAX'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'free_info_ajax_offices',
+      'access arguments' => array('access content'),);
+  $items['free_info/site'] = array( 
+    'title' => t('free_info AJAX'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'free_info_get_site',
+      'access arguments' => array('access content'),);
+  $items['free_info/taxonomy'] = array(
+    'title' => t('free info AJAX'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'free_info_taxonomy',
+      'access arguments' => array('access content'),);
+
+	return $items;
+}
+
+function free_info_form_alter(&$form, &$form_state, $form_id)
+{
+
+  if($form['#id'] == "views-exposed-form-search-result-page"){
+    $form['keyword']['#attributes']['class'] = array( "apachesolr-autocomplete", 
+                                                      "unprocessed");
+  }
+
+  
+  if ($form['#id'] == 'views-exposed-form-search-result-page'){
+    $form['keyword']['#default_value'] = t("חפש לפי שם, נושא או סוג התשובה");
+    $form['keyword']['#attributes']['rel'] = 'default';    
+    $form['submit']['#value'] = '';
+  }
+
+  
+  if ($form['#id'] == 'user-login') {
+    $form['name']['#attributes']['autocomplete'] = 'off';
+    $form['pass']['#attributes']['autocomplete'] = 'off';
+  }
+
+  
+  switch($form_id) {
+      case 'user_pass':
+        $form['#access'] = FALSE;
+
+    break;
+  }
+
+
+  
+  if ($form['form_id']['#value'] == 'report_node_form') 
+  {
+  
+    $yearsArr = array();
+    $yearsArr['_none'] = t('- Select a year');
+    $currentYear = date('Y');
+    for($i=0,$year=1999;$year <= $currentYear-1;$i++,$year++)
+    {
+      $yearsArr[$year] = $year;
+    }  
+
+    
+    $form['field_reportingyear']['und']['#options'] = $yearsArr;
+
+    global $user;
+    if(!in_array("Content Manager", $user->roles) && !in_array("Site Manager", $user->roles)) 
+    {
+      $user_full = user_load($user->uid);
+
+      $form["field_hfirstname"]["und"]["#suffix"] = '</div> <div class="user_info_container">
+      <div class="user_info_row">שם משפחה: <span>'.$user_full->field_user_last_name["und"][0]["value"].'</span></div>
+      <div class="user_info_row">שם פרטי: <span>'.$user_full->field_user_first_name["und"][0]["value"].'</span></div>
+      <div class="user_info_row">טלפון ראשי: <span>'.$user_full->field_phonecode1["und"][0]["value"].'-'.$user_full->field_phonenumber["und"][0]["value"].'</span></div>
+      <div class="user_info_row">טלפון משני: <span>'.$user_full->field_phonecode2["und"][0]["value"].'-'.$user_full->field_phonenumber2["und"][0]["value"].'</span></div>
+      <div class="user_info_row">כתובת מייל: <span>'.$user->mail.'</span></div></div>';
+    
+      $form["field_user_email"]["und"][0]["value"]["#default_value"] = $user->mail;
+      $form["field_hfirstname"]["und"][0]["value"]["#default_value"] = $user_full->field_user_last_name["und"][0]["value"]." ".$user_full->field_user_first_name["und"][0]["value"];
+     
+
+     
+      if($form["field_status_handling2"]["und"]["#default_value"][0] == "מפורסם")
+      {
+          $form["actions"]["submit"]["#access"]=FALSE;
+          drupal_set_message(t("The Report has been published. You can not edit it."), 'error');
+      }
+    }
+    $form["field_requestswithfeesum"]["und"]["#suffix"] = '<span id="shekel_mark">₪</span></div>';
+
+   
+
+    if(in_array('Site Manager',$GLOBALS['user']->roles))
+    {      
+     
+      $form['field_hfirstname']['und'][0]['#disabled'] = TRUE;
+      $form['title_field']['he'][0]['#disabled'] = TRUE;
+      $form['field_user_email']['und'][0]['#disabled'] = TRUE;
+      $form['field_mmdofficestypes']['und']['#disabled'] = TRUE; 
+      $form['field_officeitems']['und']['#disabled'] = TRUE; 
+      $form['field_remarks']['und'][0]['#disabled'] = TRUE;
+
+      
+      $form['field_reportingyear']['und']['#disabled'] = TRUE; 
+      $form['field_globalcompletainfo']['und'][0]['#disabled'] = TRUE;
+      $form['field_globalpartinfo']['und'][0]['#disabled'] = TRUE;
+      $form['field_globalrejectinfo']['und'][0]['#disabled'] = TRUE;
+      $form['field_globalnopaystop']['und'][0]['#disabled'] = TRUE;
+      $form['field_globalapplicantstopped']['und'][0]['#disabled'] = TRUE;
+      $form['field_globalwasntended']['und'][0]['#disabled'] = TRUE;
+      $form['field_globaltotal']['und'][0]['#disabled'] = TRUE;
+
+     
+      $form['field__r_year']['und'][0]['#disabled'] = TRUE;
+      $form['field_rejectedrequests']['und'][0]['#disabled'] = TRUE;
+      $form['field_rejectedtotal']['und'][0]['#disabled'] = TRUE;
+      $form['field_rejectedrequests']['und']['add_more']['#disabled'] = TRUE;
+      
+     
+      $form['field_sum_ended_year2']['und'][0]['#disabled'] = TRUE;
+      $form['field_ended15']['und'][0]['#disabled'] = TRUE;
+      $form['field_ended1630']['und'][0]['#disabled'] = TRUE;
+      $form['field_ended3160']['und'][0]['#disabled'] = TRUE;
+      $form['field_ended61120']['und'][0]['#disabled'] = TRUE;
+      $form['field_ended120']['und'][0]['#disabled'] = TRUE;
+      $form['field_endedtotal']['und'][0]['#disabled'] = TRUE;
+      $form['field_thirdparty']['und']['#disabled'] = TRUE;
+      
+      
+      $form['field_requestswithfeetotal']['und'][0]['#disabled'] = TRUE;
+      $form['field_requestswithfeesum']['und'][0]['#disabled'] = TRUE;
+    } 
+  }
+}
+
+
+function free_info_ajax(){
+	if(sizeof($_POST) > 0){
+    if(isset($_POST['nid']) && ctype_digit(strval($_POST['nid']))) {
+      $office = array();
+      $view = views_get_view_result('wizard_step_3b', 'default', $_POST['nid']);
+      $entity = $view[0]->_field_data['nid']['entity'];
+
+      $office['title'] = $view[0]->node_title;
+      $office['nid'] = $view[0]->nid;
+      $office['language'] = $view[0]->node_language;
+      $office['officetypecode'] = $entity->field_officetypecode['und'][0]['value'];
+      $office['officenamecode'] = $entity->field_officenamecode['und'][0]['value'];
+      $office['govxdescription'] = $entity->field_govxdescription['und'][0]['value'];
+      $office['govxcontentsection'] = $entity->field_govxcontentsection['und'][0]['value'];
+      $office['managername'] = $entity->field_managername['und'][0]['value'];
+      $office['receptionphonenumbers'] = $entity->field_receptionphonenumbers['und'][0]['value'];
+      $office['fax'] = $entity->field_fax['und'][0]['value'];
+      $office['receptionaddressnotes'] = $entity->field_receptionaddressnotes['und'][0]['value'];
+      $office['email'] = $entity->field_email['und'][0]['value'];
+      $office['websiteurl'] = array("url" => $entity->field_websiteurl['und'][0]['url'],
+                               "title" => $entity->field_websiteurl['und'][0]['title']);
+      $office['payments']['onlineurl'] = $entity->field_paymentonlineurl['und'][0]['value'];
+      $office['payments']['banktransfer'] = $entity->field_paymentbanktransfer['und'][0]['value'];
+      $office['payments']['postalbank'] = $entity->field_paymentpostalbank['und'][0]['value'];
+      $office['payments']['treasury'] = $entity->field_paymenttreasury['und'][0]['value'];
+      $office['payments']['check'] = $entity->field_paymentcheck['und'][0]['value'];
+      $office['payments']['phone'] = $entity->field_paymentphone['und'][0]['value'];
+      $office['payments']['cash'] = $entity->field_paymentcash['und'][0]['value'];
+      $office['form']['onlineurl'] = $entity->field_formonlineurl['und'][0]['value'];
+      $office['form']['email'] = $entity->field_formemail['und'][0]['value'];
+      $office['form']['fax'] = $entity->field_formfax['und'][0]['value'];
+      $office['form']['letter'] = $entity->field_formletter['und'][0]['value'];
+      $office['icon'] = $entity->field_officeicon['und'][0]['filename'];
+
+      print(json_encode($office));
+    }
+	}
+}
+
+function free_info_ajax_offices(){
+  $offices = array();
+  $view = views_get_view_result('wizard_step_2b', 'block');
+  for($i=0; $i<sizeof($view); $i++){
+    $entity = $view[$i]->_field_data['nid']['entity'];
+   
+    if(is_object($entity)){
+      $offices[$i]['nid'] = $entity->nid;
+      $offices[$i]['title'] = $entity->title;
+      $offices[$i]['language'] = $entity->language;
+      $offices[$i]['officetypecode'] = getValue($entity->field_officetypecode);
+      $offices[$i]['officenamecode'] = getValue($entity->field_officenamecode);
+      $offices[$i]['mmdOfficesTypes'] = $view[$i]->field_field_mmdofficestypes[0]['rendered']['#markup'];
+      $offices[$i]['mmdOfficesTypes_tid'] = $view[$i]->field_field_mmdofficestypes[0]['raw']['tid'];
+      $offices[$i]['govxdescription'] = getValue($entity->field_govxdescription);
+      $offices[$i]['govxcontentsection'] = getValue($entity->field_govxcontentsection);
+      $offices[$i]['managername'] = getValue($entity->field_managername);
+      $offices[$i]['receptionphonenumbers'] = getValue($entity->field_receptionphonenumbers);
+      $offices[$i]['fax'] = getValue($entity->field_fax);
+      $offices[$i]['receptionaddressnotes'] = getValue($entity->field_receptionaddressnotes);
+      $offices[$i]['email'] = getValue($entity->field_email);
+      $offices[$i]['websiteurl'] = array("url" => getValue($entity->field_websiteurl, 'url'),
+                               "title" => getValue($entity->field_websiteurl, 'title'));
+      $offices[$i]['payments']['onlineurl'] = getValue($entity->field_paymentonlineurl);
+      $offices[$i]['payments']['banktransfer'] = getValue($entity->field_paymentbanktransfer);
+      $offices[$i]['payments']['postalbank'] = getValue($entity->field_paymentpostalbank);
+      $offices[$i]['payments']['treasury'] = getValue($entity->field_paymenttreasury);
+      $offices[$i]['payments']['check'] = getValue($entity->field_paymentcheck);
+      $offices[$i]['payments']['phone'] = getValue($entity->field_paymentphone);
+      $offices[$i]['payments']['cash'] = getValue($entity->field_paymentcash);
+      $offices[$i]['form']['onlineurl'] = getValue($entity->field_formonlineurl);
+      $offices[$i]['form']['email'] = getValue($entity->field_formemail);
+      $offices[$i]['form']['fax'] = getValue($entity->field_formfax);
+      $offices[$i]['form']['letter'] = getValue($entity->field_formletter);
+    }
+  }
+  
+  print(json_encode($offices));
+}
+
+function free_info_taxonomy(){
+  $taxonomy = array();
+  $taxonomies = taxonomy_get_tree(variable_get('wizard_taxonomy'));
+
+  $rel = array();
+
+  foreach($taxonomies as $key => $value){
+    $rel[$key] = $value->tid;
+  }
+  
+  foreach($taxonomies as $tax){
+    switch($tax->depth){
+      case 0: $d = trim($tax->description);
+
+              if(!isset($taxonomy[$d])){
+                $taxonomy[$d] = array();
+              }
+              break;
+
+      case 1: $parent_key = array_search($tax->parents[0], $rel);
+
+              $d = trim($taxonomies[$parent_key]->description);
+              $d2 = trim($tax->description);
+
+              if(!isset($taxonomy[$d][$d2])){
+                $taxo[$d][$d2] = array();
+              }
+              break;
+      case 2: $parent_key = array_search($tax->parents[0], $rel);
+              $parent_key2 = array_search($taxonomies[$parent_key]->parents[0], $rel);
+
+              $d = trim($taxonomies[$parent_key2]->description);
+              $d2 = trim($taxonomies[$parent_key]->description);
+              $d3 = trim($tax->description);
+
+              if(!isset($taxonomy[$d][$d2][$d3])){
+                $taxonomy[$d][$d2][$d3] = array();
+              }
+              break;
+      case 3: $parent_key = array_search($tax->parents[0], $rel);
+              $parent_key2 = array_search($taxonomies[$parent_key]->parents[0], $rel);
+              $parent_key3 = array_search($taxonomies[$parent_key2]->parents[0], $rel);
+
+              $d = trim($taxonomies[$parent_key3]->description);
+              $d2 = trim($taxonomies[$parent_key2]->description);
+              $d3 = trim($taxonomies[$parent_key]->description);
+              $d4 = trim($tax->description);
+
+              if(!isset($taxonomy[$d][$d2][$d3][$d4])){
+                $taxonomy[$d][$d2][$d3][$d4] = array();
+              }
+              break;
+      case 4: $parent_key = array_search($tax->parents[0], $rel);
+              $parent_key2 = array_search($taxonomies[$parent_key]->parents[0], $rel);
+              $parent_key3 = array_search($taxonomies[$parent_key2]->parents[0], $rel);
+              $parent_key4 = array_search($taxonomies[$parent_key3]->parents[0], $rel);
+
+              $d = trim($taxonomies[$parent_key4]->description);
+              $d2 = trim($taxonomies[$parent_key3]->description);
+              $d3 = trim($taxonomies[$parent_key2]->description);
+              $d4 = trim($taxonomies[$parent_key]->description);
+              $d5 = trim($tax->description);
+
+              if(!isset($taxonomy[$d][$d2][$d3][$d4][$d5])){
+                $taxonomy[$d][$d2][$d3][$d4][$d5] = '';
+              }
+              break;
+      case 5: $parent_key = array_search($tax->parents[0], $rel);
+              $parent_key2 = array_search($taxonomies[$parent_key]->parents[0], $rel);
+              $parent_key3 = array_search($taxonomies[$parent_key2]->parents[0], $rel);
+              $parent_key4 = array_search($taxonomies[$parent_key3]->parents[0], $rel);
+              $parent_key5 = array_search($taxonomies[$parent_key4]->parents[0], $rel);
+
+              $d = trim($taxonomies[$parent_key5]->description);
+              $d2 = trim($taxonomies[$parent_key4]->description);
+              $d3 = trim($taxonomies[$parent_key3]->description);
+              $d4 = trim($taxonomies[$parent_key2]->description);
+              $d5 = trim($taxonomies[$parent_key]->description);
+
+              if(isset($taxonomy[$d][$d2][$d3][$d4][$d5])){
+                $taxonomy[$d][$d2][$d3][$d4][$d5] = $tax->description;
+              }
+              break;
+    }
+  }
+
+  print(json_encode($taxonomy));
+  
+}
+
+function build_wizard_tax_array($source_arr){
+  $datas = array();
+  foreach($source_arr as $result)
+  {
+
+    build_wizard_array_param(
+      $datas[$result->parent][$result->tid],
+      $result->t2_tid,
+      $result->tx2_name, 
+      $result->tx2_description);
+
+    build_wizard_array_param(
+      $datas[$result->parent][$result->tid][$result->t2_tid],
+      $result->t3_tid,
+      $result->tx3_name,
+      $result->tx3_description);
+
+    build_wizard_array_param(
+      $datas[$result->parent][$result->tid][$result->t2_tid][$result->t3_tid],
+      $result->t4_tid,
+      $result->tx4_name,
+      $result->tx4_description);
+
+    build_wizard_array_param(
+      $datas[$result->parent][$result->tid][$result->t2_tid][$result->t3_tid][$result->t4_tid],
+      $result->t5_tid,
+      $result->tx5_name,
+      $result->tx5_description);
+  }
+  return $datas;
+}
+
+function build_wizard_array_param(&$source_arr, $new_key, $name, $desc){
+  if(!is_wizard_tax_exist_in_array($source_arr,$new_key))
+  {
+    $source_arr[$new_key] = array("name" => $name, "desc" => $desc);
+  }
+}
+
+function is_wizard_tax_exist_in_array($source_arr, $new_key){
+  return isset($source_arr[$new_key]);
+}
+
+function free_info_get_site(){
+  if(!variable_get('site')){
+    variable_set('site', 'foi.gov.il');
+  }
+
+  print(json_encode(array(variable_get('hostname'), variable_get('wizard_form'))));
+}
+
+function getValue($field, $key='value'){
+  if(isset($field['und'][0][$key])){
+    return $field['und'][0][$key];
+  }
+  else{
+    return '';
+  }
+}
+
+
+function free_info_form_report_node_form_alter(&$form, &$form_state, $form_id)
+{
+  if(in_array('Report',$GLOBALS['user']->roles) || in_array('Report user',$GLOBALS['user']->roles)){
+    $form['field_status_handling2']['#attributes']['class'][] = 'disableReportStatusFields';
+  }
+}

@@ -1,0 +1,51 @@
+<?php
+
+function free_info_search_apachesolr_index_document_build(ApacheSolrDocument $document, $entity, $entity_type, $env_id) {
+	if ($entity->type == 'items')
+	{
+		if($entity->field_officeitems['und']['0']['target_id']!=NULL)
+		{
+			$nid = $entity->field_officeitems['und']['0']['target_id'];
+			$node = node_load($nid);
+			$title = $node->title;
+			$document->setMultiValue('ss_field_officeitems', $nid);
+			$document->setMultiValue('ss_field_officeitems_label',$title);
+		}
+		if($entity->field_govxdescription['und']['0']['value']!=NULL)
+		{
+			$document->setMultiValue('ss_field_govxdescription',$entity->field_govxdescription['und']['0']['value']);
+		}
+	}
+	if ($entity->type == 'offices')
+	{
+		if($entity->field_govxcontentsection['und']['0']['value']!=NULL)
+		{
+			$document->setMultiValue('ss_field_govxcontentsection',$entity->field_govxcontentsection['und']['0']['value']);
+		}
+		
+	}
+}
+
+function free_info_search_apachesolr_query_alter($query){
+	$query->addParam('fl', array('ss_field_officeitems'));
+	$query->addParam('fl', array('ss_field_govxdescription'));
+	$query->addParam('fl', array('ss_field_officeitems_label'));
+	$query->addParam('fl', array('ds_changed'));
+	
+
+	$query->replaceParam('q', preg_replace('#["\-\+]#', '\"', $query->getParam('q')));
+}
+
+function free_info_apachesolr_query_prepare(DrupalSolrQueryInterface $query) {
+
+  
+  $query->setAvailableSort('ds_changed', array(
+    'title' => t('Changed Date'),
+    'default' => 'desc',
+  ));
+
+ 
+  $query->setSolrSort('ds_changed','desc');
+}
+
+?>
